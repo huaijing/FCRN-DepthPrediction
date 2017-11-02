@@ -4,23 +4,16 @@ import numpy as np
 import tensorflow as tf
 from matplotlib import pyplot as plt
 from PIL import Image
-#import cv2
 import models
+import scipy.ndimage
 
-def predict(model_data_path, image_path):
-
+def predict(model_data_path, image_dir, result_dir):
     # Default input size
     height = 228
     width = 304
     channels = 3
     batch_size = 1
-   
-    # Read image
-    img = Image.open(image_path)
-    img = img.resize([width,height], Image.ANTIALIAS)
-    img = np.array(img).astype('float32')
-    img = np.expand_dims(np.asarray(img), axis = 0)
-   
+ 
     # Create a placeholder for the input image
     input_node = tf.placeholder(tf.float32, shape=(None, height, width, channels))
 
@@ -28,50 +21,59 @@ def predict(model_data_path, image_path):
     net = models.ResNet50UpProj({'data': input_node}, batch_size, 1, False)
         
     with tf.Session() as sess:
-
         # Load the converted parameters
         print('Loading the model')
 
         # Use to load from ckpt file
-        saver = tf.train.Saver()     
+        saver = tf.train.Saver()
         saver.restore(sess, model_data_path)
 
         # Use to load from npy file
-        #net.load(model_data_path, sess) 
+        # net.load(model_data_path, sess)
 
-        # Evalute the network for the given image
-        pred = sess.run(net.get_output(), feed_dict={input_node: img})
+        for img_name in os.listdir(image_dir):
+            image_path = image_dir + img_name
+            print(image_path, image_dir, img_name)
+
+            # Read image
+            img = Image.open(image_path)
+            img = img.resize([width,height], Image.ANTIALIAS)
+            img = np.array(img).astype('float32')
+            img = np.expand_dims(np.asarray(img), axis = 0)
+      
+            # Evalute the network for the given image
+            pred = sess.run(net.get_output(), feed_dict={input_node: img})
         
-        depthMap = pred[0,:,:,0]
-        alignedDepthMap = depthMap[4:124,:]
-        print(alignedDepthMap.max(), alignedDepthMap.min(), alignedDepthMap.shape)
+            depthMap = pred[0,:,:,0]
+            alignedDepthMap = depthMap[4:124,:]
+            print(alignedDepthMap.max(), alignedDepthMap.min(), alignedDepthMap.shape)
 
+            print('Resampled by a factor of 4 with bilinear interpolation:')
+            finalDepthMap = scipy.ndimage.zoom(alignedDepthMap, 4, order=1)
 
-        # Plot result
-        fig = plt.figure()
-        #ii = plt.imshow(alignedDepthMap, interpolation='nearest')
-        #fig.colorbar(ii)
-        #plt.savefig('result.png', dpi=100)
-        plt.imsave("result.png", alignedDepthMap)
+            result_pre = result_dir + img_name[:-4]
+            # Plot result
+            fig = plt.figure()
+            ii = plt.imshow(finalDepthMap, interpolation='nearest')
+            fig.colorbar(ii)
+            plt.savefig(result_pre + '_figure.png', dpi=100)
+            plt.imsave(result_pre + '_result.png', finalDepthMap)
+            plt.close()
 
-        #pred2 = 255 * pred[0,:,:,0].astype('uint8')
-        #cv2.imwrite("result2.png", pred2);
+            # save txt
+            np.savetxt(result_pre + '_result.txt', finalDepthMap)
 
-        #plt.show()
-        plt.close()
-
-        return pred
-        
                 
 def main():
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('model_path', help='Converted parameters for the model')
-    parser.add_argument('image_paths', help='Directory of images to predict')
+    parser.add_argument('image_dir', help='Directory of images to predict')
+    parser.add_argument('result_dir', help='Directory of result')
     args = parser.parse_args()
 
     # Predict the image
-    pred = predict(args.model_path, args.image_paths)
+    predict(args.model_path, args.image_dir, args.result_dir)
     
     os._exit(0)
 
