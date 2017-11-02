@@ -4,12 +4,11 @@ import numpy as np
 import tensorflow as tf
 from matplotlib import pyplot as plt
 from PIL import Image
-
+#import cv2
 import models
 
 def predict(model_data_path, image_path):
 
-    
     # Default input size
     height = 228
     width = 304
@@ -43,12 +42,24 @@ def predict(model_data_path, image_path):
         # Evalute the network for the given image
         pred = sess.run(net.get_output(), feed_dict={input_node: img})
         
+        depthMap = pred[0,:,:,0]
+        alignedDepthMap = depthMap[4:124,:]
+        print(alignedDepthMap.max(), alignedDepthMap.min(), alignedDepthMap.shape)
+
+
         # Plot result
         fig = plt.figure()
-        ii = plt.imshow(pred[0,:,:,0], interpolation='nearest')
-        fig.colorbar(ii)
-        plt.show()
-        
+        #ii = plt.imshow(alignedDepthMap, interpolation='nearest')
+        #fig.colorbar(ii)
+        #plt.savefig('result.png', dpi=100)
+        plt.imsave("result.png", alignedDepthMap)
+
+        #pred2 = 255 * pred[0,:,:,0].astype('uint8')
+        #cv2.imwrite("result2.png", pred2);
+
+        #plt.show()
+        plt.close()
+
         return pred
         
                 
@@ -66,8 +77,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-        
-
-
-
