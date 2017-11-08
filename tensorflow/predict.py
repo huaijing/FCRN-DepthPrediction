@@ -48,8 +48,14 @@ def predict(model_data_path, image_dir, result_dir):
             alignedDepthMap = depthMap[4:124,:]
             print(alignedDepthMap.max(), alignedDepthMap.min(), alignedDepthMap.shape)
 
+            
             print('Resampled by a factor of 4 with bilinear interpolation:')
-            finalDepthMap = scipy.ndimage.zoom(alignedDepthMap, 4, order=1)
+            #finalDepthMap = scipy.ndimage.zoom(alignedDepthMap, 4, order=1)
+            finalDepthMap = scipy.ndimage.zoom(alignedDepthMap, 1.6, order=1)
+            
+            finalDepthMap = scipy.ndimage.filters.median_filter(finalDepthMap, size=(5, 5))
+            finalDepthMap = np.transpose(finalDepthMap)
+            finalDepthMap = np.flip(finalDepthMap, 1)
 
             result_pre = result_dir + img_name[:-4]
             # Plot result
@@ -61,7 +67,7 @@ def predict(model_data_path, image_dir, result_dir):
             plt.close()
 
             # save txt
-            np.savetxt(result_pre + '_result.txt', finalDepthMap)
+            np.savetxt(result_pre + '_result.txt', finalDepthMap, fmt=["%.3f",]*finalDepthMap.shape[1])
 
                 
 def main():
